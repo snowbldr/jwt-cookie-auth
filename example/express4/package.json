@@ -1,0 +1,16 @@
+{
+  "name": "jwt-auth-express4-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node ."
+  },
+  "keywords": [],
+  "author": "snowbldr",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.3",
+    "jwt-cookie-auth": "file:../.."
+  }
+}

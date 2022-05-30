@@ -1,0 +1,17 @@
+{
+  "name": "jwt-auth-fastify-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node ."
+  },
+  "keywords": [],
+  "author": "snowbldr",
+  "license": "ISC",
+  "dependencies": {
+    "fastify": "^3.28.0",
+    "fastify-express": "^0.3.3",
+    "jwt-cookie-auth": "file:../.."
+  }
+}

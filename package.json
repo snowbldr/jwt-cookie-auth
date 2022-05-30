@@ -1,0 +1,27 @@
+{
+  "name": "jwt-cookie-auth",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.mjs",
+  "files": [
+    "index.mjs",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "jest",
+    "lint": "standard --env jest",
+    "lint:fix": "standard --env jest --fix"
+  },
+  "keywords": [],
+  "author": "snowbldr",
+  "license": "ISC",
+  "dependencies": {
+    "cookie": "^0.5.0",
+    "jsonwebtoken": "^8.5.1"
+  },
+  "devDependencies": {
+    "jest": "^27.5.1",
+    "node-fetch": "2.6.7",
+    "standard": "^17.0.0"
+  }
+}

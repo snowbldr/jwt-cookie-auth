@@ -1,0 +1,16 @@
+{
+  "name": "jwt-auth-spliffy-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node ."
+  },
+  "keywords": [],
+  "author": "snowbldr",
+  "license": "ISC",
+  "dependencies": {
+    "@srfnstack/spliffy": "^0.9.2",
+    "jwt-cookie-auth": "file:../.."
+  }
+}
