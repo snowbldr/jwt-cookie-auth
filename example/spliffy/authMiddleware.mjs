@@ -1,5 +1,5 @@
-import { keyAuthorizer, loadUser } from '../authorizer.mjs'
+import { keyAuthorizer } from '../authorizer.mjs'
 
 export const authMiddleware = keyAuthorizer.authorizeMiddleware()
 
-export const basicAuthLoginMiddleware = keyAuthorizer.basicAuthLoginMiddleware(loadUser)
+export const basicAuthLoginMiddleware = keyAuthorizer.basicAuthLoginMiddleware()

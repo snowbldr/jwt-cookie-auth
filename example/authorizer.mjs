@@ -1,35 +1,59 @@
 import { createSha512Hmac, JwtCookieAuthorizer } from '../index.mjs'
 import { privateKey, publicKey } from './testKeys.mjs'
 
-const authorizerConfig = () => ({
-  jwtSignOptions: {
-    expiresIn: '3s',
+export const loadUserByUsername = (username) => users[username]
+
+/**
+ *
+ * @return {AuthorizerOptions}
+ */
+const authorizerConfig = () => ( {
+  tokens: {
+    auth: {
+      signOptions: {
+        expiresIn: '3s'
+      }
+    },
+    refresh: {
+      signOptions: {
+        expiresIn: '6s'
+      }
+    }
+  },
+  signOptions: {
     issuer: 'jwt-authorizer',
     audience: 'users',
     keyid: '1234'
   },
-  jwtVerifyOptions: {
+  verifyOptions: {
     audience: 'users',
     issuer: 'jwt-authorizer'
   },
-  enableLocking: true,
-  setLockStatus: ({ username, lockedAt, failedLogins }) => {
-    const user = users[username]
-    user.lockedAt = lockedAt
-    user.failedLogins = failedLogins
-  },
-  jwtCookieConfig: {
-    maxAge: 60,
+  cookieConfig: {
+    maxAge: 10,
     secure: false,
     path: '/secure'
   },
-  lockSeconds: 3,
-  maxFailedLogins: 2
-})
+  login: {
+    loadUserByUsername,
+    storeRefreshToken: (user, token) => validRefreshTokens[token] = user.username,
+    checkRefreshTokenValid: (user, token) => token in validRefreshTokens,
+    invalidateRefreshToken: (user, token) => delete validRefreshTokens[token]
+  },
+  locking: {
+    setLockStatus: ({ username, lockedAt, failedLogins }) => {
+      const user = users[username]
+      user.lockedAt = lockedAt
+      user.failedLogins = failedLogins
+    },
+    lockSeconds: 3,
+    maxFailedLogins: 2
+  },
+} )
 
 export const keyAuthorizer = new JwtCookieAuthorizer({
   ...authorizerConfig(),
-  jwtKeys: {
+  keys: {
     private: privateKey,
     public: publicKey
   }
@@ -37,7 +61,7 @@ export const keyAuthorizer = new JwtCookieAuthorizer({
 
 export const secretAuthorizer = new JwtCookieAuthorizer({
   ...authorizerConfig(),
-  jwtSecret: 'secret'
+  secret: 'secret'
 })
 
 export const users = {
@@ -74,5 +98,4 @@ export const users = {
     failedLogins: 0
   }
 }
-
-export const loadUser = (username) => users[username]
+export const validRefreshTokens = {}

@@ -72,8 +72,8 @@ The method used in the node implementation will work with any framework, but is 
 - **passwordHashFn**: Function, a function to hash the password. Uses sha512 hash from crypto package by default.
 - **userToJwtPayload**: Function, An optional function to map the user to the jwt payload when a token is created.
   The username is used as sub by default, and roles are passed if any are provided.
-- **jwtCookieName**: String, the cookie name to store the token into. Defaults to jwt-session
-- **jwtCookieConfig**: Object, configuration options to pass to the setCookie call for the jwt-session cookie
+- **jwtCookieName**: String, the cookie name to store the token into. Defaults to jwt-auth
+- **jwtCookieConfig**: Object, configuration options to pass to the setCookie call for the jwt-auth cookie
 - **enableLocking**: Boolean, whether to enable locking out the user for some time after some failed login attempts. Defaults to false.
 - **maxFailedLogins:** Int, the maximum number of login attempts to allow before locking the user. Defaults to 10.
 - **lockSeconds**: Int, the number of seconds to lock the user after reaching the max failed attempts. Defaults to 10 minutes.

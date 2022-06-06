@@ -1,5 +1,5 @@
-import { loadUser } from '../../authorizer.mjs'
+import { loadUserByUsername } from '../../authorizer.mjs'
 
 export default {
-  GET: ({ url: { query: { username } } }) => loadUser(username)
+  GET: ({ url: { query: { username } } }) => loadUserByUsername(username)
 }

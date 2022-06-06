@@ -10,9 +10,26 @@ module.exports = {
   basicAuth (user, pass) {
     return `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`
   },
-  async getJwtCookie (baseUrl, basicAuth) {
+  async getJwtCookies(baseUrl, basicAuth){
     const res = await fetch(`${baseUrl}/login`, { headers: { Authorization: basicAuth } })
     expect(res.status).toBe(200)
-    return res.headers.raw()['set-cookie'][0]
+    return res.headers.raw()['set-cookie']
+  },
+  toCookieHeader(cookies){
+    return cookies.map(c=>`${c.split(';')[0]};`).join(' ')
+  },
+  getAuthCookie (setCookieHeader) {
+    return setCookieHeader.find(it => it.match('jwt-auth'))
+  },
+  async getValidRefreshTokens(baseUrl){
+    return (await fetch(`${baseUrl}/refreshTokens`)).json()
+  },
+  expectLogoutCookies(res){
+    let rawHeaders = res.headers.raw()['set-cookie']
+    const authCookie = rawHeaders.find(c => c.includes('jwt-auth'))
+    const refreshCookie = rawHeaders.find(c => c.includes('jwt-refresh'))
+
+    expect(authCookie).toBe('jwt-auth=; Expires=Thu, 01 Jan 1970 00:00:00 GMT')
+    expect(refreshCookie).toBe('jwt-refresh=; Expires=Thu, 01 Jan 1970 00:00:00 GMT')
   }
 }

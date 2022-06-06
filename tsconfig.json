@@ -1,0 +1,11 @@
+{
+  // https://www.typescriptlang.org/docs/handbook/declaration-files/dts-from-js.html#tsconfig
+  "include": ["index.mjs"],
+  "compilerOptions": {
+    "allowJs": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": ".",
+    "declarationMap": true
+  }
+}

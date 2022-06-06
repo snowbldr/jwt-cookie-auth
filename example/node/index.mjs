@@ -1,9 +1,9 @@
 import http from 'http'
 import { hasAllRoles, hasAnyRole, HttpError } from '../../index.mjs'
-import { loadUser, secretAuthorizer } from '../authorizer.mjs'
+import { loadUserByUsername, secretAuthorizer, validRefreshTokens } from '../authorizer.mjs'
 
 const authorized = (fn) => async (req, res) => {
-  await secretAuthorizer.verify(req, res)
+  await secretAuthorizer.verifyAuth(req, res)
   return fn(req, res)
 }
 
@@ -20,8 +20,19 @@ const roleCheck = (roleFn, roles, fn) => {
 const routes = {
   '/health': async (req, res) => res.write('OK'),
   '/login': async (req, res) => {
-    await secretAuthorizer.basicAuthLogin(req, res, loadUser)
+    await secretAuthorizer.basicAuthLogin(req, res)
     res.write(JSON.stringify(req.user))
+  },
+  '/logout': async (req, res) => {
+    await secretAuthorizer.logout(req, res)
+    res.write('OK')
+  },
+  '/refresh': async (req, res) =>{
+    await secretAuthorizer.refreshAuthCookie(req, res, true)
+    res.write(JSON.stringify(req.user))
+  },
+  '/refreshTokens': (req, res)=>{
+    res.write(JSON.stringify(validRefreshTokens))
   },
   '/secure/secrets': authorized((req, res) => res.write(req.user.username)),
   '/secure/anyRole': authorized(
@@ -37,10 +48,10 @@ const routes = {
       })
   ),
   '/user': (req, res) => {
-    res.write(JSON.stringify(loadUser(req.query.username)))
+    res.write(JSON.stringify(loadUserByUsername(req.query.username)))
   },
   '/resetUser': (req, res) => {
-    const user = loadUser(req.query.username)
+    const user = loadUserByUsername(req.query.username)
     user.failedLogins = 0
     user.lockedAt = null
   }
