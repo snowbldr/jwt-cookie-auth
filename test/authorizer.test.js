@@ -5,7 +5,7 @@ const {
   getAuthCookie,
   expectLogoutCookies,
   getJwtCookies,
-  getValidRefreshTokens, getRefreshCookie, toCookieHeader
+  getValidRefreshTokens, toCookieHeader
 } = require('./fixtures')
 const { parse, serialize } = require('cookie')
 
@@ -21,11 +21,11 @@ async function validateJwtCookies (res, validateRefresh = true) {
   }))
   const rawCookies = res.headers.raw()['set-cookie']
   const parsed = rawCookies.map(parse)
-  validateCookie('jwt-auth', rawCookies.find(c=>c.includes('jwt-auth')), parsed.find(p=> 'jwt-auth' in p), responseBody, 3)
-  if(validateRefresh){
-    validateCookie('jwt-refresh', rawCookies.find(c=>c.includes('jwt-refresh')), parsed.find(p=> 'jwt-refresh' in p), responseBody, 6)
+  validateCookie('jwt-auth', rawCookies.find(c => c.includes('jwt-auth')), parsed.find(p => 'jwt-auth' in p), responseBody, 3)
+  if (validateRefresh) {
+    validateCookie('jwt-refresh', rawCookies.find(c => c.includes('jwt-refresh')), parsed.find(p => 'jwt-refresh' in p), responseBody, 6)
   }
-  return parsed.find(p=> p['jwt-auth'])
+  return parsed.find(p => p['jwt-auth'])
 }
 
 function validateCookie (cookieName, rawCookie, parsed, expectedBody, expSeconds) {
@@ -97,12 +97,12 @@ describe.each(servers)('authorizer', (server) => {
       expect(res.status).toBe(401)
     })
     it(`${server.name} accepts a jwt cookie for authentication and stores the refresh jwt`, async () => {
-      let cookieHeader = await getJwtCookies(baseUrl, tacoBasicAuth)
+      const cookieHeader = await getJwtCookies(baseUrl, tacoBasicAuth)
       const res = await fetch(url('/secure/secrets'), { headers: { Cookie: getAuthCookie(cookieHeader) } })
       expect(res.status).toBe(200)
       expect(await res.text()).toEqual('taco')
       const refreshCookie = parse(cookieHeader.find(h => h.includes('jwt-refresh')))
-      let validRefreshTokens = await getValidRefreshTokens(baseUrl)
+      const validRefreshTokens = await getValidRefreshTokens(baseUrl)
       expect(validRefreshTokens[refreshCookie['jwt-refresh']]).toBe('taco')
     })
     it(`${server.name} does not accept JWT as authorization`, async () => {
@@ -140,7 +140,7 @@ describe.each(servers)('authorizer', (server) => {
       const jwtCookies = await getJwtCookies(baseUrl, tacoBasicAuth)
       const res = await fetch(url('/logout'), { headers: { Cookie: toCookieHeader(jwtCookies) } })
       const refreshCookie = parse(jwtCookies.find(h => h.includes('jwt-refresh')))
-      let validRefreshTokens = await getValidRefreshTokens(baseUrl)
+      const validRefreshTokens = await getValidRefreshTokens(baseUrl)
       expect(validRefreshTokens[refreshCookie['jwt-refresh']]).toBe(undefined)
       expect(res.status).toBe(200)
       expect(await res.text()).toEqual('OK')
@@ -149,23 +149,23 @@ describe.each(servers)('authorizer', (server) => {
   })
   describe('refresh', () => {
     it(`${server.name} refreshes a valid jwt`, async () => {
-      let initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
+      const initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
       const refreshCookie = parse(initJwtCookie.find(h => h.includes('jwt-refresh')))
-      let validRefreshTokens = await getValidRefreshTokens(baseUrl)
+      const validRefreshTokens = await getValidRefreshTokens(baseUrl)
       expect(validRefreshTokens[refreshCookie['jwt-refresh']]).toBe('taco')
       const initAuthCookie = parse(getAuthCookie(initJwtCookie))
 
-      let cookieHeader = toCookieHeader(initJwtCookie)
-      //wait 1 second so the jwt will have a different value
+      const cookieHeader = toCookieHeader(initJwtCookie)
+      // wait 1 second so the jwt will have a different value
       await new Promise((resolve) => setTimeout(resolve, 1050))
       const res = await fetch(url('/refresh'), { headers: { Cookie: cookieHeader } })
       const cookie = await validateJwtCookies(res, false)
       expect(initAuthCookie).not.toEqual(cookie)
     })
     it(`${server.name} does not refresh if the refreshJwt is invalid`, async () => {
-      let initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
-      const cookieHeader = toCookieHeader(initJwtCookie.map(h=>{
-        if(h.includes('jwt-refresh')){
+      const initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
+      const cookieHeader = toCookieHeader(initJwtCookie.map(h => {
+        if (h.includes('jwt-refresh')) {
           return h.replace(/jwt-refresh=.*;/, 'jwt-refresh=taco;')
         } else {
           return h
@@ -176,27 +176,27 @@ describe.each(servers)('authorizer', (server) => {
       expectLogoutCookies(res)
     })
     it(`${server.name} does not refresh an expired jwt`, async () => {
-      let initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
+      const initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
       const refreshCookie = parse(initJwtCookie.find(h => h.includes('jwt-refresh')))
-      let validRefreshTokens = await getValidRefreshTokens(baseUrl)
+      const validRefreshTokens = await getValidRefreshTokens(baseUrl)
       expect(validRefreshTokens[refreshCookie['jwt-refresh']]).toBe('taco')
-      let cookieHeader = toCookieHeader(initJwtCookie)
-      //wait 1 second so the jwt will have a different value
+      const cookieHeader = toCookieHeader(initJwtCookie)
+      // wait 1 second so the jwt will have a different value
       await new Promise((resolve) => setTimeout(resolve, 3500))
       const res = await fetch(url('/refresh'), { headers: { Cookie: cookieHeader } })
       expect(res.status).toBe(401)
       expectLogoutCookies(res)
     })
     it(`${server.name} does not refresh if missing jwt cookie`, async () => {
-      let initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
-      const cookieHeader = toCookieHeader(initJwtCookie.filter(h=> !h.includes('jwt-auth')))
+      const initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
+      const cookieHeader = toCookieHeader(initJwtCookie.filter(h => !h.includes('jwt-auth')))
       const res = await fetch(url('/refresh'), { headers: { Cookie: cookieHeader } })
       expect(res.status).toBe(401)
       expectLogoutCookies(res)
     })
     it(`${server.name} does not refresh if missing refresh cookie`, async () => {
-      let initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
-      const cookieHeader = toCookieHeader(initJwtCookie.filter(h=> !h.includes('jwt-refresh')))
+      const initJwtCookie = await getJwtCookies(baseUrl, tacoBasicAuth)
+      const cookieHeader = toCookieHeader(initJwtCookie.filter(h => !h.includes('jwt-refresh')))
       const res = await fetch(url('/refresh'), { headers: { Cookie: cookieHeader } })
       expect(res.status).toBe(401)
       expectLogoutCookies(res)

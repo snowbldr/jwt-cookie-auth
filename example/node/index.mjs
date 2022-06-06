@@ -27,11 +27,11 @@ const routes = {
     await secretAuthorizer.logout(req, res)
     res.write('OK')
   },
-  '/refresh': async (req, res) =>{
+  '/refresh': async (req, res) => {
     await secretAuthorizer.refreshAuthCookie(req, res, true)
     res.write(JSON.stringify(req.user))
   },
-  '/refreshTokens': (req, res)=>{
+  '/refreshTokens': (req, res) => {
     res.write(JSON.stringify(validRefreshTokens))
   },
   '/secure/secrets': authorized((req, res) => res.write(req.user.username)),

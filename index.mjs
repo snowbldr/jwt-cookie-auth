@@ -119,7 +119,7 @@ const verifyJwt = promisify(jwt.verify)
  * An object that handles creating and authenticated JWTs
  */
 export class JwtCookieAuthorizer {
-  //private to prevent secrets and keys from being read
+  // private to prevent secrets and keys from being read
   /**
    * @type AuthorizerOptions
    */
@@ -200,7 +200,7 @@ export class JwtCookieAuthorizer {
       throw new UnauthorizedError('Login Failed')
     }
 
-    if (this.#config.locking && user.lockedAt && new Date().getTime() < user.lockedAt.getTime() + ( this.#config.locking.lockSeconds * 1000 )) {
+    if (this.#config.locking && user.lockedAt && new Date().getTime() < user.lockedAt.getTime() + (this.#config.locking.lockSeconds * 1000)) {
       throw new UnauthorizedError('Your user is locked, try again later.')
     }
     if (!user.passwordHash) {
@@ -233,7 +233,7 @@ export class JwtCookieAuthorizer {
       throw new UnauthorizedError('Login Failed')
     }
 
-    if (this.#config.locking && user.lockedAt || user.failedLogins > 0) {
+    if ((this.#config.locking && user.lockedAt) || user.failedLogins > 0) {
       await this.#config.locking.setLockStatus({
         username: user.username,
         failedLogins: 0,
@@ -276,7 +276,7 @@ export class JwtCookieAuthorizer {
   async logout (req, res) {
     if (!res.loggedOut) {
       deleteCookies(res, ...Object.values(this.#config.tokens).map(t => t.cookieName))
-      let refreshToken = this.getCookieValue(req, this.#config.tokens.refresh.cookieName)
+      const refreshToken = this.getCookieValue(req, this.#config.tokens.refresh.cookieName)
       if (refreshToken) {
         await this.#config.login.invalidateRefreshToken(jwt.decode(refreshToken, {}), refreshToken)
       }
@@ -301,7 +301,7 @@ export class JwtCookieAuthorizer {
       let authUser = await this.#verifyRequest(req, res, this.#config.tokens.auth)
       const refreshUser = await this.#verifyRequest(req, res, this.#config.tokens.refresh)
       const refreshToken = this.getCookieValue(req, this.#config.tokens.refresh.cookieName)
-      let refreshTokenValid = await this.#config.login.checkRefreshTokenValid(refreshUser, refreshToken)
+      const refreshTokenValid = await this.#config.login.checkRefreshTokenValid(refreshUser, refreshToken)
       if (refreshTokenValid !== true) {
         throw new UnauthorizedError('Refresh token invalid')
       }
@@ -616,11 +616,11 @@ async function createJwtToken (jwtInfo, tokenOptions) {
 function buildLoginConfig (input) {
   const out = {}
   out.hashPassword = valOrDefault(ensureFn(input, 'hashPassword', true), createSha512Hmac)
-  out.userToJwtPayload = valOrDefault(ensureFn(input, 'userToJwtPayload', true), user => ( {
+  out.userToJwtPayload = valOrDefault(ensureFn(input, 'userToJwtPayload', true), user => ({
     sub: user.username,
     username: user.username,
     roles: user.roles || []
-  } ))
+  }))
   out.loadUserByUsername = ensureFn(input, 'loadUserByUsername', true)
   out.storeRefreshToken = ensureFn(input, 'storeRefreshToken', false)
   out.invalidateRefreshToken = ensureFn(input, 'invalidateRefreshToken', false)
@@ -681,15 +681,15 @@ function buildTokenConfig (name, input, baseOptions) {
   if (out.secret && out.keys) {
     throw new Error('You cannot set both secret and keys for each token')
   }
-  if (!out.secret && ( !out.keys || typeof out.keys !== 'object' )) {
+  if (!out.secret && (!out.keys || typeof out.keys !== 'object')) {
     throw new Error('You must specify either secret or keys for each token')
   }
   return out
 }
 
-function mergeConfig(...objects){
+function mergeConfig (...objects) {
   const res = {}
-  for(const obj of objects){
+  for (const obj of objects) {
     Object.assign(res, obj || {})
   }
   return res
@@ -731,7 +731,7 @@ function endRes (res, statusCode, message) {
  * Ensure a property of an object is of the specified type
  * @param obj The object whose property to verify
  * @param prop The property to verify
- * @param type The type the property must be (compared to the result of typeof on the property value)
+ * @param {string} type The type the property must be (compared to the result of typeof on the property value)
  * @param optional Whether the property is optional, throws an error if false
  * @return {*}
  */
@@ -739,6 +739,7 @@ function ensureType (obj, prop, type, optional = false) {
   if (!optional && !obj[prop]) {
     throw new Error(`${prop} must be defined`)
   }
+  // eslint-disable-next-line valid-typeof
   if (obj[prop] && typeof obj[prop] !== type) {
     throw new Error(`${prop} must be of type ${type}`)
   }
@@ -752,7 +753,7 @@ const ensureStringOrBuffer = (obj, prop, optional = false) => {
   if (!optional && !obj[prop]) {
     throw new Error(`${prop} must be defined`)
   }
-  if (obj[prop] && typeof obj[prop] !== 'string' && !( obj[prop] instanceof Buffer )) {
+  if (obj[prop] && typeof obj[prop] !== 'string' && !(obj[prop] instanceof Buffer)) {
     throw new Error(`${prop} must be of a string or a Buffer`)
   }
   return obj[prop]

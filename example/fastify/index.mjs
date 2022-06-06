@@ -29,7 +29,7 @@ async function start () {
   })
   app.use('/refresh', keyAuthorizer.refreshAuthMiddleware(true))
 
-  app.get('/refreshTokens', (req, res)=>{
+  app.get('/refreshTokens', (req, res) => {
     res.send(JSON.stringify(validRefreshTokens))
   })
 

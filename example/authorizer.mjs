@@ -7,7 +7,7 @@ export const loadUserByUsername = (username) => users[username]
  *
  * @return {AuthorizerOptions}
  */
-const authorizerConfig = () => ( {
+const authorizerConfig = () => ({
   tokens: {
     auth: {
       signOptions: {
@@ -36,7 +36,7 @@ const authorizerConfig = () => ( {
   },
   login: {
     loadUserByUsername,
-    storeRefreshToken: (user, token) => validRefreshTokens[token] = user.username,
+    storeRefreshToken: (user, token) => { validRefreshTokens[token] = user.username },
     checkRefreshTokenValid: (user, token) => token in validRefreshTokens,
     invalidateRefreshToken: (user, token) => delete validRefreshTokens[token]
   },
@@ -48,8 +48,8 @@ const authorizerConfig = () => ( {
     },
     lockSeconds: 3,
     maxFailedLogins: 2
-  },
-} )
+  }
+})
 
 export const keyAuthorizer = new JwtCookieAuthorizer({
   ...authorizerConfig(),
