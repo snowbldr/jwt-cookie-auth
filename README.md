@@ -1,5 +1,5 @@
 # jwt-cookie-auth
-Authentication and authorization using JWTs stored in cookies for maintaining stateless sessions
+Authentication and authorization using JWTs stored in cookies for maintaining sessions
 
 ### Getting Started
 To begin, create a JwtAuthorizer with the necessary functions.
