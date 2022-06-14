@@ -3,7 +3,7 @@ import fastifyExpress from 'fastify-express'
 import {
   hasAllRolesMiddleware,
   hasAnyRoleMiddleware
-} from '../../index.mjs'
+} from '../../index.js'
 import { keyAuthorizer, loadUserByUsername, validRefreshTokens } from '../authorizer.mjs'
 
 const app = Fastify({ logger: true })

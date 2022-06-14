@@ -6,7 +6,7 @@ const {
   expectLogoutCookies,
   getJwtCookies,
   getValidRefreshTokens, toCookieHeader
-} = require('./fixtures')
+} = require('./fixtures.cjs')
 const { parse, serialize } = require('cookie')
 
 const tacoBasicAuth = basicAuth('taco', 'password123')

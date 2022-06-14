@@ -1,5 +1,5 @@
 import http from 'http'
-import { hasAllRoles, hasAnyRole, HttpError } from '../../index.mjs'
+import { hasAllRoles, hasAnyRole, HttpStatusError } from '../../index.js'
 import { loadUserByUsername, secretAuthorizer, validRefreshTokens } from '../authorizer.mjs'
 
 const authorized = (fn) => async (req, res) => {
@@ -9,7 +9,7 @@ const authorized = (fn) => async (req, res) => {
 
 const roleCheck = (roleFn, roles, fn) => {
   return (req, res) => {
-    if (roleFn(roles, req.user.roles)) {
+    if (roleFn(req.user.roles, ...roles)) {
       return fn(req, res)
     } else {
       res.statusCode = 403
@@ -73,7 +73,7 @@ async function handle (req, res) {
 
 http.createServer((req, res) => {
   handle(req, res).then(res.end).catch(e => {
-    if (e instanceof HttpError) {
+    if (e instanceof HttpStatusError) {
       res.statusCode = e.statusCode
       res.statusMessage = e.statusMessage
       res.setHeader('content-type', 'application/json')

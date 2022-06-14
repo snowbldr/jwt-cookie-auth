@@ -1,16 +1,22 @@
 {
   "name": "jwt-cookie-auth",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "",
-  "main": "index.mjs",
+  "main": "index.js",
+  "type": "module",
   "files": [
-    "index.mjs",
+    "index.js",
+    "index.d.ts",
+    "index.d.ts.map",
     "README.md"
   ],
   "scripts": {
     "test": "jest",
     "lint": "standard --env jest",
-    "lint:fix": "standard --env jest --fix"
+    "lint:fix": "standard --env jest --fix",
+    "typedef": "tsc",
+    "docs": "typedoc --plugin typedoc-plugin-markdown --out docs .",
+    "build": "npm run lint:fix && npm run typedef && npm run docs && npm run test"
   },
   "keywords": [],
   "author": "snowbldr",
@@ -21,7 +27,11 @@
   },
   "devDependencies": {
     "jest": "^27.5.1",
+    "jsdoc-to-markdown": "^7.1.1",
     "node-fetch": "2.6.7",
-    "standard": "^17.0.0"
+    "standard": "^17.0.0",
+    "typedoc": "^0.22.17",
+    "typedoc-plugin-markdown": "^3.12.1",
+    "typescript": "^4.7.3"
   }
 }

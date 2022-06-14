@@ -2,53 +2,89 @@
 Authentication and authorization using JWTs stored in cookies for maintaining stateless sessions
 
 ### Getting Started
-To begin, create a JwtAuthorizer
+To begin, create a JwtAuthorizer with the necessary functions.
 
 ```javascript
 const authorizer = JwtCookieAuthorizer({
-  jwtSecret: 'mySecret'
+  secret: 'mySecret',
+  login: {
+    loadUserByUsername: username => myDb.findByUsername(username),
+    storeRefreshToken: (user, token) => myDb.saveRefreshToken({token, user}),
+    checkRefreshTokenValid: (user, token) => myDb.refreshTokenExists(user.username, token),
+    invalidateRefreshToken: (user, token) => myDb.deleteRefreshToken(user.username, token)
+  }
 })
 ```
+Token refreshing is enabled by default, as it provides the most secure mode by enabling global logout.
+Having this enabled means authentication is not completely stateless, and that each time the token is refreshed you
+will need to check the validity of the refresh token against your storage. While being stateful, this is still
+an improvement over storing sessions in a central store as it doesn't need to be checked on every request, but only
+when refreshing the auth token.
 
-Create a function to load the user
-```javascript
-function loadUser(username, req, res) {
-  return myDb.findByUsername(username)
-}
-```
+To disable the use of refresh tokens and have regular stateless jwts, set refreshEnabled to false. You do not need
+to pass the refresh related functions if refresh tokens are disabled. 
 
-The load user function must return an object
+The complete JwtCookieAuthorizer options reference is here: [AuthorizerOptions](./docs/interfaces/AuthorizerOptions.md)
+
+The load user function must return a [PersistedUser](./docs/classes/PersistedUser.md) 
 ```javascript
 const user = {
   //required fields
-  username: 'String, the user\'s unique name, used as sub jwt field',
-  passwordHash: 'String, the stored hash of the password',
-  salt: 'String, a random salt to use in the password hash function',
+  username: 'rickJames',
+  passwordHash: '!mR!cKJ@m35817c#',
+  salt: '1234saltytlas4321',
   //optional fields
-  roles: ['String[], a list of roles the user is assigned, added to jwt as roles field'],
-  lockedAt: new Date(), // or null, required if enableLocking is true,
-  failedLogins: 10 //Int, required if enableLocking is true
+  roles: ['not-allowed-on-the-couch']
 }
 ```
 
 Add the login middleware to a route to be used for login
 ```javascript
-app.get('/login', keyAuthorizer.basicAuthLoginMiddleware(loadUser), (req, res)=>{
-  res.send(JSON.stringify(req.user))
+app.get('/login', keyAuthorizer.basicAuthLoginMiddleware(), (req, res)=>{
+  res.send(`${req.user.username}, you're logged in!`)
 })
 ```
 
 Add the authorizer to secured route
 ```javascript
 app.get('/secure/secrets', keyAuthorizer.authorizeMiddleware(), (req, res) => {
-  res.send(req.user.username)
+  res.send(`Your name is: ${req.user.username}`)
+})
+```
+
+Add a logout end point to log users out
+```javascript
+app.get('/logout', keyAuthorizer.authorizeMiddleware(), (req, res) => {
+  res.send('logged out')
 })
 ```
 
 That's it, you're ready to authenticate users!
 
+### Locking
+User lockout is supported by setting the `locking` property when creating the authorizer
+
+At minimum, you must provide a `setLockStatus` function that will persist the lock status of the user
+```javascript
+const authorizer = JwtCookieAuthorizer({
+  ...,
+  locking: {
+    setLockStatus(userLockEvent){
+      db.updateUserLockStatus(userLockEvent)
+    }
+  }
+})
+```
+
+See [LockingOptions](./docs/interfaces/LockingOptions.md) for all configuration options
+
+### Reference Docs
+See [Js Doc Reference](./docs/modules.md)
+
 #### Examples
 The "examples" directory provides examples of using this library with several common http frameworks.
+
+See the minimal example for the easiest way to get started.
 
 #### Framework Support
 This library supports the following frameworks:
@@ -61,24 +97,6 @@ Express, spliffy, and fastify are supported via middleware, if your framework su
 it will likely work without any modification.
 
 The method used in the node implementation will work with any framework, but is a tad more verbose.
-
-#### JwtCookieAuthorizer Options Reference
-- **jwtSecret**: String/Buffer, A secret value used for creating and validating JSON Web Tokens, cannot be set if jwtKeys passed
-- **jwtKeys**: An object with a private and public key, cannot be set if jwtSecret is passed
-  - **private**: String/Buffer, The PEM encoded private key
-  - **public**: String/Buffer, The PEM encoded public key
-- **jwtSignOptions**: Options object passed verbatim to jwt.sign. See https://www.npmjs.com/package/jsonwebtoken
-- **jwtVerifyOptions**: Options object passed verbatim to jwt.verify. See https://www.npmjs.com/package/jsonwebtoken
-- **passwordHashFn**: Function, a function to hash the password. Uses sha512 hash from crypto package by default.
-- **userToJwtPayload**: Function, An optional function to map the user to the jwt payload when a token is created.
-  The username is used as sub by default, and roles are passed if any are provided.
-- **jwtCookieName**: String, the cookie name to store the token into. Defaults to jwt-auth
-- **jwtCookieConfig**: Object, configuration options to pass to the setCookie call for the jwt-auth cookie
-- **enableLocking**: Boolean, whether to enable locking out the user for some time after some failed login attempts. Defaults to false.
-- **maxFailedLogins:** Int, the maximum number of login attempts to allow before locking the user. Defaults to 10.
-- **lockSeconds**: Int, the number of seconds to lock the user after reaching the max failed attempts. Defaults to 10 minutes.
-- **setLockStatus**: Function, Update the user when it's lock status is changed. Required if enableLocking is true.
-  This function should persist the changes to the user.
 
 ## Why use a cookie
 Using a cookie to store a JWT means you're vulnerable to CSRF attacks, and you _will_ need to set up CSRF protection in your chosen framework.

@@ -1,4 +1,4 @@
-const { servers, basicAuth } = require('./fixtures')
+const { servers, basicAuth } = require('./fixtures.cjs')
 const fetch = require('node-fetch')
 
 describe.each(servers)('lockout', (server) => {

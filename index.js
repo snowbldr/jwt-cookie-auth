@@ -6,13 +6,166 @@ import { promisify } from 'util'
 const signJwt = promisify(jwt.sign)
 const verifyJwt = promisify(jwt.verify)
 
+export class User {
+  /**
+   * The user's unique name
+   * @type string
+   */
+  username
+  /**
+   * Roles assigned to the user
+   * @type Array.<string>=
+   */
+  roles
+
+  /**
+   * @param {{ username: string, roles: Array.<string>= }} opts
+   */
+  constructor ({ username, roles }) {
+    this.username = username
+    this.roles = roles
+  }
+}
+
+/**
+ * Minimal JWT user data
+ */
+export class JwtUser extends User { //eslint-disable-line
+  /**
+   * The user's unique name, synonym for username
+   * @type string
+   */
+  sub
+
+  /**
+   * @param {{ username: string, roles: Array.<string>=, sub: string}} opts
+   */
+  constructor ({ username, roles, sub }) {
+    super({ username, roles })
+    this.sub = sub
+  }
+}
+
+/**
+ * Minimal data for a persisted user capable of logging in
+ */
+export class PersistedUser extends User { //eslint-disable-line
+  /**
+   * A hash of the user's password and their salt
+   * @type string
+   */
+  passwordHash
+  /**
+   * A random unique string used to make the same password hash to a different value and prevent identifying shared passwords based on the hash
+   * @type string
+   */
+  salt
+  /**
+   * The number of failed login attempts so far
+   * @type number=
+   */
+  failedLogins
+  /**
+   * The point in time when this user became locked
+   * @type Date=
+   */
+  lockedAt
+
+  /**
+   *
+   * @param {{username: string, roles: Array.<string>, passwordHash: string, salt: string, failedLogins: number=, lockedAt: Date=}} opts
+   */
+  constructor ({ username, roles, passwordHash, salt, failedLogins, lockedAt }) {
+    super({ username, roles })
+    this.passwordHash = passwordHash
+    this.salt = salt
+    this.failedLogins = failedLogins
+    this.lockedAt = lockedAt
+  }
+}
+
+export class UserLockEvent { //eslint-disable-line
+  /**
+   * The user's unique name
+   * @type {string}
+   */
+  username
+  /**
+   * The action that triggered the {@link AuthorizerOptions.setLockStatus} function, one of ('failedAttempt', 'locked', 'unlocked')
+   * @type {string}
+   */
+  action
+  /**
+   * The number of failed login attempts so far
+   * @type {number}
+   */
+  failedLogins
+  /**
+   * The point in time when this user became locked
+   * @type {Date=}
+   */
+  lockedAt
+
+  /**
+   *
+   * @param {{username: string, action: string, failedLogins: number, lockedAt: Date=}} opts
+   */
+  constructor ({ username, action, failedLogins, lockedAt }) {
+    this.username = username
+    this.action = action
+    this.failedLogins = failedLogins
+    this.lockedAt = lockedAt
+  }
+}
+
+export class LoginResult { //eslint-disable-line
+  /**
+   * The user data that was encoded in the JWTs
+   * @type JwtUser
+   */
+  jwtUser
+  /**
+   * A JWT token to be used for authentication
+   * @type string
+   */
+  authToken
+  /**
+   * A cookie containing the authToken
+   * @type string
+   */
+  authCookie
+  /**
+   * A JWT token to be used for obtaining new auth tokens
+   * only provided if refresh is enabled
+   * @type string=
+   */
+  refreshToken
+  /**
+   * A cookie containing the authToken
+   * only provided if refresh is enabled
+   * @type string=
+   */
+  refreshCookie
+
+  /**
+   *
+   * @param {{jwtUser: JwtUser, authToken: string, authCookie: string, refreshToken: string=, refreshCookie: string=}} opts
+   */
+  constructor ({ jwtUser, authToken, authCookie, refreshToken, refreshCookie }) {
+    this.jwtUser = jwtUser
+    this.authToken = authToken
+    this.authCookie = authCookie
+    this.refreshToken = refreshToken
+    this.refreshCookie = refreshCookie
+  }
+}
+
 /**
  * @typedef {object} AuthResponse Minimal required properties of a response object as used by JwtCookieAuthorizer
- * @interface
- * @property {function(string)} [getHeader] return the value of a header
- * @property {function(string)} [get] return the value of a header (available in frameworks like express)
- * @property {function(string)} [setHeader] set the value of a header
- * @property {function(string)} [set] set the value of a header (available in frameworks like express)
+ * @property {(header: string) => string|Array.<string>} [getHeader] return the value of a header
+ * @property {(header: string) => string|Array.<string>} [get] return the value of a header (available in frameworks like express)
+ * @property {(header: string) => void} [setHeader] set the value of a header
+ * @property {(header: string) => void} [set] set the value of a header (available in frameworks like express)
  * @property {number} statusCode Used to set the HTTP response status code
  * @property {string} statusMessage Used to set the HTTP response status message
  * @property {function} end End the current response
@@ -20,7 +173,6 @@ const verifyJwt = promisify(jwt.verify)
 
 /**
  * @typedef {object} AuthRequest Minimal required properties of a request object as used by JwtCookieAuthorizer
- * @interface
  * @property {object} [cookies] Parsed cookies received on the request, cookies are parsed from the header if not available
  * @property {object} headers Headers received on the request
  * @property {object} [user] The user object retrieved from the jwt
@@ -28,95 +180,171 @@ const verifyJwt = promisify(jwt.verify)
  */
 
 /**
- * @typedef {object} JwtKeys Keys used to sign and verify JWTs
- * @typedef {!string|!Buffer} private The private key passed to sign from https://www.npmjs.com/package/jsonwebtoken
- * @typedef {!string|!Buffer} public The public key passed to sign from https://www.npmjs.com/package/jsonwebtoken
+ * Keys used to sign and verify JWTs
+ * @typedef {object} JwtKeys
+ * @property {!string|!Buffer=} private The private key passed to sign from https://www.npmjs.com/package/jsonwebtoken
+ * If not passed, it will not be possible to generate new tokens.
+ * @property {!string|!Buffer} public The public key passed to verify from https://www.npmjs.com/package/jsonwebtoken
  */
 
 /**
+ * Options for creating and verifying tokens
  * @typedef {object} TokenOptions
- * @property {!String|!Buffer} [secret] The secret value used for creating and validating JSON Web Tokens, cannot be set if keys are provided
- * @property {JwtKeys} [keys] An object containing keys used to sign and verify JWTs, cannot be set if secret is provided
- * @property {object} [signOptions] Options passed to {@link jwt.sign} when creating a token.
+ * @property {string|Buffer=} secret The secret value used for creating and validating JSON Web Tokens, cannot be set if keys are provided
+ * @property {JwtKeys=} keys Keys used to sign and verify JWTs, cannot be set if secret is provided
+ * @property {object=} signOptions Options passed to sign when creating a token.
  *        Recommended to pass issuer and expiresIn at minimum.
  *        See https://www.npmjs.com/package/jsonwebtoken
  *        example: {issuer: 'my-app', expiresIn: '3m'}
- * @property {object} [verifyOptions] Options passed to jwt.verify. See https://www.npmjs.com/package/jsonwebtoken
- * @property {string} [cookieName] The cookie name to store the token into, defaults to jwt-${name} where name is either auth or refresh
- * @property {object} [cookieConfig] Configuration options to pass cooke.serialize See https://www.npmjs.com/package/cookie
+ * @property {object=} verifyOptions Options passed to jwt.verify. See https://www.npmjs.com/package/jsonwebtoken
+ * @property {string=} cookieName The cookie name to store the token into, defaults to jwt-${name} where name is either auth or refresh
+ * @property {object=} cookieConfig Configuration options to pass cookie.serialize See https://www.npmjs.com/package/cookie
  */
 
 /**
- * @typedef {object} Tokens Options for the tokens this verified deals with. Cookie names default to jwt-${tokenName}
- * @property {TokenOptions} [auth] A token with a short expiration used for validating a user is authenticated. An expiresIn of 5m is used if not specified.
+ * Options for the tokens this verified deals with. Cookie names default to jwt-${tokenName}
+ * @typedef {object} Tokens
+ * @property {TokenOptions=} auth A token with a short expiration used for validating a user is authenticated. An expiresIn of 15m is used if not specified.
  *        expiresIn should be set to the maximum amount of time a session is allowed to remain idle.
- * @property {TokenOptions} [refresh] A token with a long expiration used to refresh auth tokens. An expiresIn of 1d is used if not specified.
+ * @property {TokenOptions=} refresh A token with a long expiration used to refresh auth tokens. An expiresIn of 3d is used if not specified.
  *        expiresIn should be set to the maximum amount of time a user is allowed to be logged in for without re-authorizing.
  *        These tokens should be persisted, and removed when the user logs out, ending their session and preventing new tokens
- *        from being created. The {@link AuthorizerOptions.storeRefreshToken} function is used to store the token when it's
- *        created, and the {@link AuthorizerOptions.invalidateRefreshToken} function is used when the user is logged out to
+ *        from being created. The {@link LoginOperations.storeRefreshToken} function is used to store the token when it's
+ *        created, and the {@link LoginOperations.invalidateRefreshToken} function is used when the user is logged out to
  *        remove or mark the refresh token as invalid.
  */
 
 /**
- * @typedef User A user capable of logging in, identifiable by username
- * @property {string} username The user's unique name
- * @property {string[]} [roles] Roles assigned to the user
+ * Functions related to logging in and out a user
+ * @typedef LoginOperations
+ * @property {loadUserByUsername} loadUserByUsername load the user data by username
+ * @property {storeRefreshToken} storeRefreshToken Store a new refresh token
+ * @property {checkRefreshTokenValid} checkRefreshTokenValid Check if a refresh token is valid
+ * @property {invalidateRefreshToken} invalidateRefreshToken Invalidate the given refresh token
+ * @property {hashPassword} hashPassword HMAC Hash the password and salt
+ * @property {userToJwtPayload} userToJwtPayload Convert a {@link PersistedUser} to a {@link JwtUser}
  */
 
 /**
- * @typedef {User} JwtUser Minimal JWT user data
- * @property {string} sub The user's unique name, synonym for username
+ * A function to load the user data by username.
+ * Implementation required if using any of {@link JwtCookieAuthorizer.basicAuthLogin} or {@link JwtCookieAuthorizer.basicAuthLoginMiddleware}
+ * @typedef {(username: string, request: AuthRequest, response: AuthResponse) => Promise<PersistedUser>} loadUserByUsername
+ * @param {string} username The name of the user to load
+ * @param {AuthRequest} request The current request
+ * @param {AuthResponse} response The current response
+ * @return {Promise<PersistedUser>} The persisted user
  */
 
 /**
- * @typedef {User} PersistedUser Minimal data for a persisted user capable of logging in
- * @property {string} passwordHash A hash of the user's password and their salt
- * @property {string} salt A random unique string used to make the same password hash to a different value and prevent identifying shared passwords based on the hash
- * @property {number} [failedLogins] The number of failed login attempts so far
- * @property {Date} [lockedAt] The point in time when this user became locked
+ * Store a newly created refresh token. Not called if refresh is disabled.
+ * This function should store the cookie in persistent storage (i.e. sql db, redis, etc).
+ *
+ * To save space, you can store a hash of the token instead of the whole token value.
+ *
+ * You must also implement invalidateRefreshToken, which removes the refresh token
+ * from the persistent storage. This prevents the user from further refreshing their auth token and logs the user out
+ * everywhere.
+ *
+ * @typedef {(jwtUser: JwtUser, token: string) => Promise<void>} storeRefreshToken
+ * @param {JwtUser} jwtUser The decoded user payload from the jwt
+ * @param {string} token The refresh token to store
+ * @return {Promise<void>}
  */
 
 /**
- * @typedef {object} UserLockEvent Minimal user data for a persisted user record
- * @property {string} username The user's unique name
- * @property {('failedAttempt', 'locked', 'unlocked')} action The action that triggered the {@link AuthorizerOptions.setLockStatus} function
- * @property {number} [failedLogins] The number of failed login attempts so far
- * @property {Date} lockedAt The point in time when this user became locked
+ * Check if the provided refresh token is valid to determine if it can be used to refresh an auth token.
+ * Not called if refresh is disabled.
+ *
+ * If you would like to prevent calls to a datastore, have this function return true without any checks.
+ *
+ * Ideally, this should check in the data store whether this token is valid. This effectively makes this jwt authorizer
+ * a stateful session, with the primary difference being that calls between refreshes don't need to hit a session store
+ * to check if the session is valid. At a large scale, this will vastly reduce the amount of calls being made to a centralized
+ * session store.
+ *
+ * The token is validated before this is called.
+ *
+ * @typedef {(jwtUser: JwtUser, token: string) => Promise<void>} checkRefreshTokenValid
+ * @param {JwtUser} jwtUser The decoded user payload from the jwt
+ * @param {string} token The refresh token to validate
+ * @return {Promise<boolean>} Whether the token is valid or not
  */
 
 /**
- * @typedef {object} LoginOptions Options related to logging in and out a user
- * @property {function(password: string,salt: string): Promise<string>} [hashPassword] Hash the given password and salt. Uses sha512 hash from crypto package by default.
- * @property {function(user: PersistedUser): Promise<JwtUser>} [userToJwtPayload] Map a user to the jwt payload when a token is created.
- * @property {function(string, AuthRequest, AuthResponse): Promise<PersistedUser>} [loadUserByUsername] A function to load the user data by username.
- *      Required if using any of {@link JwtCookieAuthorizer.basicAuthLogin} or {@link JwtCookieAuthorizer.basicAuthLoginMiddleware}
- * @property {function(jwtUser: JwtUser, token: string): Promise<boolean>} checkRefreshTokenValid Check if the provided refresh token is valid to determine if it can be used to refresh an auth token
- * @property {function(jwtUser: JwtUser, token: string): Promise<void>} storeRefreshToken Store a newly created refresh token.
- *      This function should store the cookie in persistent storage (i.e. sql db, redis, etc)
- *      A corresponding function should be passed to the logout middleware that removes the refresh token
- *      from the persistent storage, which prevents the user from further refreshing their auth token.
- * @property {function(jwtUser: JwtUser, token: string): Promise<void>} invalidateRefreshToken Remove a refresh token from persistent storage or otherwise mark it invalid
+ * Remove a refresh token from persistent storage or otherwise mark it invalid. Not called if refresh is disabled.
+ * @typedef {(jwtUser: JwtUser, token: string) => Promise<void>} invalidateRefreshToken
+ * @param {JwtUser} jwtUser The decoded user payload from the jwt
+ * @param {string} token The refresh token to store
+ * @return {Promise<void>}
  */
 
 /**
- * @typedef {object} LockingOptions Options related to locking a user
- * @property {Number} [maxFailedLogins] Maximum number of login attempts to allow before locking the user. Defaults to 10.
- * @property {Number} [lockSeconds] Number of seconds to lock the user after reaching the max failed attempts. Defaults to 10 minutes.
- * @property {function(UserLockEvent): Promise<void>} setLockStatus Update the user when it's lock status is changed. Required if enableLocking is true.
- *      This function should persist the changes to the user.
+ * Hash the given password and salt. Uses sha512 hash from crypto package by default.
+ *
+ * @typedef {(password: string, salt: string) => Promise<string>} hashPassword
+ * @param {string} password The password to hash
+ * @param {string} salt A random unique string used to make the same password hash to a different value and prevent identifying shared passwords based on the hash
+ * @return {Promise<string>}
  */
 
 /**
- * @typedef {TokenOptions} AuthorizerOptions Options passed to create a new JwtCookieAuthorizer
- * TokenOptions properties are the defaults used if values are not passed for specific tokens, except for cookieName
- * @property {Tokens} [tokens] Options for creating and verifying tokens
- * @property {LoginOptions} [login] Options related to logging in and out a user
- * @property {LockingOptions} [locking] Options related to locking a user, locking is disabled if not passed
+ * Map a user to the jwt payload when a token is created.
+ * @typedef {(user: PersistedUser) => Promise<JwtUser>} userToJwtPayload
+ * @param {PersistedUser} user
+ * @return Promise<JwtUser>
  */
 
 /**
- * An object that handles creating and authenticated JWTs
+ * Options related to locking a user
+ * @typedef {object} LockingOptions
+ * @property {number=} maxFailedLogins Maximum number of login attempts to allow before locking the user. Defaults to 10.
+ * @property {number=} lockSeconds Number of seconds to lock the user after reaching the max failed attempts. Defaults to 10 minutes.
+ * @property {setLockStatus} setLockStatus Set the user's lock status
+ */
+
+/**
+ * Update the user when it's lock status is changed.
+ * This function should persist the changes to the user.
+ * @typedef {(userLockEvent: UserLockEvent) => Promise<void>} setLockStatus
+ * @param {UserLockEvent} userLockEvent The event that triggered the call to setLockStatus
+ * @return {Promise<void>}
+ */
+
+/**
+ *  Options passed to create a new JwtCookieAuthorizer
+ *  TokenOptions properties are the defaults used if values are not passed for specific tokens, except for cookieName
+ * @typedef {object} AuthorizerOptions
+ * @property {LoginOperations} login Operations for login and refresh
+ * @property {LockingOptions=} locking Options related to locking users, locking is disabled if this is not set
+ * @property {Tokens=} tokens Token configurations
+ * @property {boolean=} refreshEnabled Whether refresh tokens are enabled.
+ *    This is true by default and the corresponding refresh methods must be provided on the LoginOperations.
+ *
+ *    If this is disabled, it will disable the ability to log out users, and will prevent refresh tokens from being created.
+ *
+ *    It is not recommended to disable refresh for anything important, but is fine for toy apps and non-critical applications
+ * @property {string|Buffer=} secret The default secret value used for creating and validating JSON Web Tokens, cannot be set if keys are provided
+ * @property {JwtKeys=} keys The default keys used to sign and verify JWTs, cannot be set if secret is provided
+ * @property {object=} signOptions The default options passed to sign when creating a token.
+ *        Recommended to pass issuer and expiresIn at minimum.
+ *        See https://www.npmjs.com/package/jsonwebtoken
+ *        example: {issuer: 'my-app', expiresIn: '3m'}
+ * @property {object=} verifyOptions The default options passed to jwt.verify. See https://www.npmjs.com/package/jsonwebtoken
+ * @property {object=} cookieConfig The default configuration options to pass cookie.serialize See https://www.npmjs.com/package/cookie
+ *
+ */
+
+/**
+ * A middleware function
+ * @typedef {(req: object, res: object, next: function(*=): void) => void} middleware
+ * @param {object} req The current request
+ * @param {object} res The outgoing response
+ * @param {function(*=):void} next A function to trigger the next middleware
+ * @return void
+ */
+
+/**
+ * An object that handles creating and authenticating JWTs
  */
 export class JwtCookieAuthorizer {
   // private to prevent secrets and keys from being read
@@ -129,70 +357,73 @@ export class JwtCookieAuthorizer {
    * @param {AuthorizerOptions} authorizerOptions Options to configure the authorizer
    */
   constructor (authorizerOptions) {
-    this.#config = JwtCookieAuthorizer.#buildConfig(authorizerOptions)
+    const config = {}
+    config.refreshEnabled = typeof authorizerOptions.refreshEnabled === 'boolean' ? authorizerOptions.refreshEnabled : true
+    config.login = buildLoginConfig(authorizerOptions.login, config.refreshEnabled)
+    config.locking = buildLockingConfig(authorizerOptions.locking)
+    config.tokens = {}
+    authorizerOptions.tokens = authorizerOptions.tokens ?? {}
+    for (const token of ['auth', 'refresh']) {
+      config.tokens[token] = buildTokenConfig(token, authorizerOptions.tokens[token] || {}, authorizerOptions)
+    }
+    this.#config = config
   }
 
   /**
-   * @return {(function(*, *, *): void)|*} A middleware that will authorize the request using the provided authorizer
+   * @return {middleware} A middleware that will authorize the request using the provided authorizer
    */
   basicAuthLoginMiddleware () {
     return (req, res, next) =>
       this.basicAuthLogin(req, res)
-        .then(next)
+        .then(() => next())
         .catch(e => handleHttpError(res, e, next))
   }
 
   /**
    * Create a new middleware function that will exchange basic auth for a jwt token or will validate an existing jwt
    *
-   * @return {(function(*, *, *): void)|*} A middleware that will authorize the request using this authorizer
+   * @return {middleware} A middleware that will authorize the request using this authorizer
    */
   authorizeMiddleware () {
     return (req, res, next) => {
       this.verifyAuth(req, res)
-        .then(next)
+        .then(() => next())
         .catch(e => handleHttpError(res, e, next))
     }
   }
 
   /**
    * Create a new middleware function that will exchange a valid jwt for a newer valid jwt
-   * @param relogUser Whether to call loadUserByUsername to reload a user's data. Useful to refresh user roles or other identity data
-   * @return {(function(*, *, *): void)|*} A middleware to refresh jwt token cookies
+   * @param {boolean} reloadUser Whether to call loadUserByUsername to reload a user's data. Useful to refresh user roles or other identity data
+   * @return {middleware} A middleware to refresh jwt token cookies
    */
-  refreshAuthMiddleware (relogUser = false) {
+  refreshAuthMiddleware (reloadUser = false) {
+    if (!this.#config.refreshEnabled) {
+      throw new Error('Refresh is disabled for this authorizer')
+    }
     return (req, res, next) =>
-      this.refreshAuthCookie(req, res, relogUser)
-        .then(next)
+      this.refreshAuthCookie(req, res, reloadUser)
+        .then(() => next())
         .catch(e => handleHttpError(res, e, next))
   }
 
   /**
    * Create a middleware that will log out the user when called
-   * @return {(function(*, *, *): void)|*}
+   * @return {middleware}
    */
   logoutMiddleware () {
     return (req, res, next) => {
       this.logout(req, res)
-        .then(next)
+        .then(() => next())
         .catch(e => handleHttpError(res, e, next))
     }
   }
 
   /**
-   * @typedef {object} LoginResponse
-   * @property {JwtUser} jwtUser The user data that was encoded in the JWTs
-   * @property {string} authToken A JWT token to be used for authentication
-   * @property {string} authCookie A cookie containing the authToken
-   * @property {string} refreshToken A JWT token to be used for refresh auth tokens
-   * @property {string} refreshCookie A cookie containing the authToken
-   */
-
-  /**
    * Attempt to log the user in and create a new jwt token
    * @param {PersistedUser} user The user to log in
    * @param {string} password The plain text password to log the user in with
-   * @return {LoginResponse}
+   * @return {LoginResult}
    * @throws {UnauthorizedError}
    */
   async login (user, password) {
@@ -215,70 +446,77 @@ export class JwtCookieAuthorizer {
           user.failedLogins = 0
         }
         if (user.failedLogins >= this.#config.locking.maxFailedLogins) {
-          await this.#config.locking.setLockStatus({
+          await this.#config.locking.setLockStatus(new UserLockEvent({
             username: user.username,
             failedLogins: user.failedLogins + 1,
             lockedAt: new Date(),
             action: 'locked'
-          })
+          }))
           throw new UnauthorizedError('Too many failed attempts, user locked.')
         }
-        await this.#config.locking.setLockStatus({
+        await this.#config.locking.setLockStatus(new UserLockEvent({
           username: user.username,
           failedLogins: user.failedLogins + 1,
           lockedAt: null,
           action: 'failedAttempt'
-        })
+        }))
       }
       throw new UnauthorizedError('Login Failed')
     }
 
     if ((this.#config.locking && user.lockedAt) || user.failedLogins > 0) {
-      await this.#config.locking.setLockStatus({
+      await this.#config.locking.setLockStatus(new UserLockEvent({
         username: user.username,
         failedLogins: 0,
         lockedAt: null,
         action: 'unlocked'
-      })
+      }))
     }
 
     const jwtUser = await this.#config.login.userToJwtPayload(user)
     const authToken = await createJwtToken(jwtUser, this.#config.tokens.auth)
-    const refreshToken = await createJwtToken(jwtUser, this.#config.tokens.refresh)
-    await this.#config.login.storeRefreshToken(jwtUser, refreshToken)
-
-    return {
+    const result = {
+      jwtUser,
       authToken,
-      refreshToken,
-      authCookie: createTokenCookie(this.#config.tokens.auth, authToken),
-      refreshCookie: createTokenCookie(this.#config.tokens.refresh, refreshToken),
-      jwtUser
+      authCookie: createTokenCookie(this.#config.tokens.auth, authToken)
     }
+    if (this.#config.refreshEnabled) {
+      result.refreshToken = await createJwtToken(jwtUser, this.#config.tokens.refresh)
+      result.refreshCookie = createTokenCookie(this.#config.tokens.refresh, result.refreshToken)
+      await this.#config.login.storeRefreshToken(jwtUser, result.refreshToken)
+    }
+    return new LoginResult(result)
   }
 
   /**
    * Verify the provided jwt cookie and set the user on the request to the parser user in the jwt
    * @param {AuthRequest} req The incoming request
    * @param {AuthResponse} res The outgoing response
-   * @return {Promise<void>}
+   * @return {Promise<JwtUser>}
    * @throws {UnauthorizedError}
    */
   async verifyAuth (req, res) {
-    await this.#verifyRequest(req, res, this.#config.tokens.auth)
+    return this.#verifyRequest(req, res, this.#config.tokens.auth)
   }
 
   /**
    * Log the current user out by deleting their cookies and calling invalidateRefreshToken
-   * @param req The current request
-   * @param res The current response
+   * @param {AuthRequest} req The current request
+   * @param {AuthResponse} res The current response
    * @return {Promise<void>}
    */
   async logout (req, res) {
     if (!res.loggedOut) {
-      deleteCookies(res, ...Object.values(this.#config.tokens).map(t => t.cookieName))
-      const refreshToken = this.getCookieValue(req, this.#config.tokens.refresh.cookieName)
-      if (refreshToken) {
-        await this.#config.login.invalidateRefreshToken(jwt.decode(refreshToken, {}), refreshToken)
+      const cookiesToDelete = [this.#config.tokens.auth.cookieName]
+      if (this.#config.refreshEnabled) {
+        cookiesToDelete.push(this.#config.tokens.refresh.cookieName)
+      }
+      deleteCookies(res, ...cookiesToDelete)
+      if (this.#config.refreshEnabled) {
+        const refreshToken = this.getCookieValue(req, this.#config.tokens.refresh.cookieName)
+        if (refreshToken) {
+          await this.#config.login.invalidateRefreshToken(jwt.decode(refreshToken, {}), refreshToken)
+        }
       }
       res.loggedOut = true
     }
@@ -286,17 +524,20 @@ export class JwtCookieAuthorizer {
 
   /**
    * Exchange a valid jwt token for a new one with a later expiration time
-   * The request must contain a valid auth token and a valid refresh token to be accepted
+   * The request must contain a valid auth token and a valid refresh token (if refresh is enabled) to be accepted
    * You must refresh the auth cookie before either token expires to keep the session active
    * If either token is expired, the user must re-login
    * The new jwt is added as a cookie which overwrites the existing cookie
-   * @param req The current request object
-   * @param res The current response object
-   * @param relogUser Whether to call loadUserByUsername to reload a user's data. Useful to refresh user roles or other identity data
+   * @param {AuthRequest} req The current request object
+   * @param {AuthResponse} res The current response object
+   * @param {boolean} reloadUser Whether to call loadUserByUsername to reload a user's data. Useful to refresh user roles or other identity data
    * @return {Promise<void>}
    * @throws {UnauthorizedError}
    */
-  async refreshAuthCookie (req, res, relogUser = false) {
+  async refreshAuthCookie (req, res, reloadUser = false) {
+    if (!this.#config.refreshEnabled) {
+      throw new Error('Refresh is disabled for this authorizer')
+    }
     await this.#logoutUnauthorized(req, res, async () => {
       let authUser = await this.#verifyRequest(req, res, this.#config.tokens.auth)
       const refreshUser = await this.#verifyRequest(req, res, this.#config.tokens.refresh)
@@ -305,8 +546,8 @@ export class JwtCookieAuthorizer {
       if (refreshTokenValid !== true) {
         throw new UnauthorizedError('Refresh token invalid')
       }
-      if (relogUser) {
-        const persistedUser = await this.#config.login.loadUserByUsername(refreshUser.username, req, res)
+      if (reloadUser) {
+        const persistedUser = await this.#config.login.loadUserByUsername(authUser.username, req, res)
         authUser = await this.#config.login.userToJwtPayload(persistedUser)
       }
       const authToken = await createJwtToken(authUser, this.#config.tokens.auth)
@@ -316,6 +557,7 @@ export class JwtCookieAuthorizer {
   }
 
   /**
+   * Log the user in using a basic auth header
    * @param {AuthRequest} req The current request with a headers object containing the request headers
    * @param {AuthResponse} res The current response to set the cookies on
    * @throws {UnauthorizedError}
@@ -332,7 +574,9 @@ export class JwtCookieAuthorizer {
           refreshCookie,
           jwtUser
         } = await this.login(await loadUserByUsername(username, req, res), password)
-        setCookies(res, authCookie, refreshCookie)
+        const cookiesToSet = [authCookie]
+        if (refreshCookie) cookiesToSet.push(refreshCookie)
+        setCookies(res, ...cookiesToSet)
         req.user = jwtUser
       } else {
         throw new UnauthorizedError('Authorization not provided')
@@ -371,7 +615,7 @@ export class JwtCookieAuthorizer {
   }
 
   /**
-   * Verify the provided jwt cookie and set the user on the request to the parser user in the jwt
+   * Verify the provided jwt cookie and set request.user from the decoded jwt payload
    * @param {AuthRequest} req The incoming request
    * @param {AuthResponse} res The outgoing response
    * @param {TokenOptions} tokenOptions The token options to use to verify the token
@@ -387,9 +631,9 @@ export class JwtCookieAuthorizer {
 
   /**
    * Logout the user if an unauthorized error is thrown
-   * @param req The incoming request
-   * @param res The outgoing response
-   * @param fn The function to run and listen for {@link UnauthorizedError}
+   * @param {AuthRequest} req The incoming request
+   * @param {AuthResponse} res The outgoing response
+   * @param {function():*}fn The function to run and listen for {@link UnauthorizedError}
    * @return {Promise<*>} The return value from fn
    */
   async #logoutUnauthorized (req, res, fn) {
@@ -402,25 +646,15 @@ export class JwtCookieAuthorizer {
       throw e
     }
   }
-
-  static #buildConfig (options) {
-    const config = {}
-    config.login = buildLoginConfig(options.login)
-    config.locking = buildLockingConfig(options.locking)
-    config.tokens = {}
-    for (const token of ['auth', 'refresh']) {
-      config.tokens[token] = buildTokenConfig(token, options.tokens[token] || {}, options)
-    }
-    return config
-  }
 }
 
 /**
  * Check whether the userRoles contains at least one of the requiredRoles
- * @param requiredRoles An array of the roles the user must have one of
- * @param userRoles An array of the roles the user is assigned
+ * @param {string[]} userRoles An array of the roles the user is assigned
+ * @param {...string} requiredRoles An array of the roles the user must have one of
+ * @return {boolean}
  */
-export const hasAnyRole = (requiredRoles, userRoles) => {
+export const hasAnyRole = (userRoles, ...requiredRoles) => {
   if (!Array.isArray(requiredRoles) || !Array.isArray(userRoles)) {
     throw new Error('requiredRoles and userRoles must be an array')
   }
@@ -434,10 +668,11 @@ export const hasAnyRole = (requiredRoles, userRoles) => {
 
 /**
  * Check whether the userRoles contains all the requiredRoles
- * @param requiredRoles An array of the roles the user must have one of
- * @param userRoles An array of the roles the user is assigned
+ * @param {string[]} userRoles An array of the roles the user is assigned
+ * @param {...string} requiredRoles An array of the roles the user must have all of
+ * @return {boolean}
  */
-export const hasAllRoles = (requiredRoles, userRoles) => {
+export const hasAllRoles = (userRoles, ...requiredRoles) => {
   if (!Array.isArray(requiredRoles) || !Array.isArray(userRoles)) {
     throw new Error('requiredRoles and userRoles must be an array')
   }
@@ -451,12 +686,12 @@ export const hasAllRoles = (requiredRoles, userRoles) => {
 
 /**
  * Create a middleware to validate the current user has any of the specified roles
- * @param requiredRoles {string} The roles the user must have one of
- * @return {(function(*, *, *): void)|*} a new middleware function that reads the user's roles from req.user.roles and validates the user has any of required roles
+ * @param {...string} requiredRoles The roles the user must have one of
+ * @return {middleware} a new middleware function that reads the user's roles from req.user.roles and validates the user has any of required roles
  */
 export const hasAnyRoleMiddleware = (...requiredRoles) => {
   return (req, res, next) => {
-    if (hasAnyRole(requiredRoles, req.user.roles)) {
+    if (hasAnyRole(req.user.roles, ...requiredRoles)) {
       return next()
     } else {
       return endRes(res, 403, 'Forbidden')
@@ -466,12 +701,12 @@ export const hasAnyRoleMiddleware = (...requiredRoles) => {
 
 /**
  * Create a middleware to validate the current user has all the required roles
- * @param requiredRoles {string} The roles the user must have all of
- * @return {(function(*, *, *): void)|*} a new middleware function that reads the user's roles form req.user.roles and validates the user has any of the required roles
+ * @param {...string} requiredRoles The roles the user must have all of
+ * @return {middleware} a new middleware function that reads the user's roles form req.user.roles and validates the user has all the required roles
  */
 export const hasAllRolesMiddleware = (...requiredRoles) => {
   return (req, res, next) => {
-    if (hasAllRoles(requiredRoles, req.user.roles)) {
+    if (hasAllRoles(req.user.roles, ...requiredRoles)) {
       return next()
     } else {
       return endRes(res, 403, 'Forbidden')
@@ -511,9 +746,15 @@ export function createSha512Hmac (value, salt) {
  * An Error with an associated http statusCode and statusMessage
  * @property {number} statusCode Http status code associated with the exception
  * @property {string} statusMessage The status message to use on the response
- * @property {object|string} [body] An object or message to use as the response body
+ * @property {*=} [body] An object or message to use as the response body
  */
-export class HttpError extends Error {
+export class HttpStatusError extends Error {
+  /**
+   *
+   * @param {number} statusCode
+   * @param {string} statusMessage
+   * @param {*=} body
+   */
   constructor (statusCode, statusMessage, body) {
     super(body)
     this.statusCode = statusCode
@@ -524,10 +765,15 @@ export class HttpError extends Error {
 
 /**
  * An HttpError with 401 statusCode and Unauthorized statusMessage
- * @property {object|string} [body] An object or message to use as the response body
- * @property {Error} [cause] The error that caused this error to be thrown, if any
+ * @property {*=} [body] An object or message to use as the response body
+ * @property {Error=} [cause] The error that caused this error to be thrown, if any
  */
-export class UnauthorizedError extends HttpError {
+export class UnauthorizedError extends HttpStatusError {
+  /**
+   *
+   * @param {*=} body
+   * @param {Error=} cause
+   */
   constructor (body, cause) {
     super(401, 'Unauthorized', body)
     if (cause) this.stack += `\n${cause.stack}`
@@ -539,7 +785,7 @@ export class UnauthorizedError extends HttpError {
  * If there are existing values for set-cookie, they will not be overridden.
  *
  * @param {AuthResponse} res The response object to set the cookies on
- * @param {string} cookies The cookies to add to the set-cookie header
+ * @param {...string} cookies The serialized cookies to add to the set-cookie header
  */
 export function setCookies (res, ...cookies) {
   const getter = res.getHeader || res.get
@@ -553,11 +799,10 @@ export function setCookies (res, ...cookies) {
 }
 
 /**
- * Set cookies on the response. The cookies should be serialized strings.
- * If there are existing values for set-cookie, they will not be overridden.
+ * Delete the user's cookies.
  *
  * @param {AuthResponse} res The response object to set the cookies on
- * @param {string} cookieNames The names of the cookies to add to the set-cookie header
+ * @param {...string} cookieNames The names of the cookies to add to the set-cookie header
  */
 export function deleteCookies (res, ...cookieNames) {
   setCookies(res, ...cookieNames.map(name => cookie.serialize(name, '', { expires: new Date(1) })))
@@ -610,10 +855,11 @@ async function createJwtToken (jwtInfo, tokenOptions) {
 
 /**
  * Validate the provided login options and construct a config with defaults
- * @param {LoginOptions} input
- * @returns {LoginOptions}
+ * @param {LoginOperations} input
+ * @param {boolean} refreshEnabled
+ * @returns {LoginOperations}
  */
-function buildLoginConfig (input) {
+function buildLoginConfig (input, refreshEnabled) {
   const out = {}
   out.hashPassword = valOrDefault(ensureFn(input, 'hashPassword', true), createSha512Hmac)
   out.userToJwtPayload = valOrDefault(ensureFn(input, 'userToJwtPayload', true), user => ({
@@ -622,18 +868,21 @@ function buildLoginConfig (input) {
     roles: user.roles || []
   }))
   out.loadUserByUsername = ensureFn(input, 'loadUserByUsername', true)
-  out.storeRefreshToken = ensureFn(input, 'storeRefreshToken', false)
-  out.invalidateRefreshToken = ensureFn(input, 'invalidateRefreshToken', false)
-  out.checkRefreshTokenValid = ensureFn(input, 'checkRefreshTokenValid', false)
+  if (refreshEnabled) {
+    out.storeRefreshToken = ensureFn(input, 'storeRefreshToken', false)
+    out.invalidateRefreshToken = ensureFn(input, 'invalidateRefreshToken', false)
+    out.checkRefreshTokenValid = ensureFn(input, 'checkRefreshTokenValid', false)
+  }
   return out
 }
 
 /**
  * Validate the provided locking options and construct a config with defaults
  * @param {LockingOptions} input
- * @returns {LockingOptions}
+ * @returns {LockingOptions=}
  */
 function buildLockingConfig (input) {
+  if (!input) return null
   const out = {}
   out.maxFailedLogins = valOrDefault(ensureNumber(input, 'maxFailedLogins', true), 10)
   out.lockSeconds = valOrDefault(ensureNumber(input, 'lockSeconds', true), 600)
@@ -663,7 +912,7 @@ function buildTokenConfig (name, input, baseOptions) {
   out.signOptions.algorithm = valOrDefault(out.signOptions.algorithm, algorithm)
   out.verifyOptions.algorithm = valOrDefault(out.verifyOptions.algorithm, [algorithm])
 
-  const defaultTimeout = name === 'refresh' ? '1d' : '5m'
+  const defaultTimeout = name === 'refresh' ? '3d' : '15m'
   out.signOptions.expiresIn = valOrDefault(out.signOptions.expiresIn, defaultTimeout)
 
   ensureStringOrBuffer(input, 'secret', true)
@@ -696,7 +945,7 @@ function mergeConfig (...objects) {
 }
 
 function handleHttpError (res, e, next) {
-  if (e instanceof HttpError) {
+  if (e instanceof HttpStatusError) {
     res.statusCode = e.statusCode
     res.statusMessage = e.statusMessage
     next(e)

@@ -1,7 +1,9 @@
 {
   // https://www.typescriptlang.org/docs/handbook/declaration-files/dts-from-js.html#tsconfig
-  "include": ["index.mjs"],
+  "files": ["index.js"],
   "compilerOptions": {
+    "moduleResolution": "Node",
+    "target": "es6",
     "allowJs": true,
     "declaration": true,
     "emitDeclarationOnly": true,

@@ -1,4 +1,4 @@
-import { createSha512Hmac, JwtCookieAuthorizer } from '../index.mjs'
+import { createSha512Hmac, JwtCookieAuthorizer } from '../index.js'
 import { privateKey, publicKey } from './testKeys.mjs'
 
 export const loadUserByUsername = (username) => users[username]
