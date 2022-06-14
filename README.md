@@ -2,7 +2,12 @@
 Authentication and authorization using JWTs stored in cookies for maintaining sessions
 
 ### Getting Started
-To begin, create a JwtAuthorizer with the necessary functions.
+To begin, install the dependency
+```shell
+npm i jwt-cookie-auth
+```
+
+Next, create a JwtAuthorizer with the necessary functions.
 
 ```javascript
 const authorizer = JwtCookieAuthorizer({
