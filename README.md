@@ -59,7 +59,7 @@ app.get('/secure/secrets', keyAuthorizer.authorizeMiddleware(), (req, res) => {
 
 Add a logout end point to log users out
 ```javascript
-app.get('/logout', keyAuthorizer.authorizeMiddleware(), (req, res) => {
+app.get('/logout', keyAuthorizer.logoutMiddleware(), (req, res) => {
   res.send('logged out')
 })
 ```
