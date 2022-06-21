@@ -29,7 +29,7 @@ module.exports = {
     const authCookie = rawHeaders.find(c => c.includes('jwt-auth'))
     const refreshCookie = rawHeaders.find(c => c.includes('jwt-refresh'))
 
-    expect(authCookie).toBe('jwt-auth=; Expires=Thu, 01 Jan 1970 00:00:00 GMT')
-    expect(refreshCookie).toBe('jwt-refresh=; Expires=Thu, 01 Jan 1970 00:00:00 GMT')
+    expect(authCookie).toBe('jwt-auth=; Path=/secure; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly')
+    expect(refreshCookie).toBe('jwt-refresh=; Path=/secure; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly')
   }
 }

@@ -507,11 +507,11 @@ export class JwtCookieAuthorizer {
    */
   async logout (req, res) {
     if (!res.loggedOut) {
-      const cookiesToDelete = [this.#config.tokens.auth.cookieName]
+      const cookiesToDelete = [createDeleteCookie(this.#config.tokens.auth)]
       if (this.#config.refreshEnabled) {
-        cookiesToDelete.push(this.#config.tokens.refresh.cookieName)
+        cookiesToDelete.push(createDeleteCookie(this.#config.tokens.refresh))
       }
-      deleteCookies(res, ...cookiesToDelete)
+      setCookies(res, ...cookiesToDelete)
       if (this.#config.refreshEnabled) {
         const refreshToken = this.getCookieValue(req, this.#config.tokens.refresh.cookieName)
         if (refreshToken) {
@@ -732,6 +732,25 @@ function createTokenCookie (tokenOptions, jwtToken) {
 }
 
 /**
+ * Delete a jwt cookie
+ * @param {TokenOptions} tokenOptions The options for the cookie to delete, needed for the path
+ * @returns {String} The serialized delete cookie
+ */
+function createDeleteCookie (tokenOptions) {
+  const options = {
+    secure: true,
+    ...valOrDefault(tokenOptions.cookieConfig, {}),
+    // Don't allow authorization cookies to be read by js
+    expires: new Date(1),
+    httpOnly: true
+  }
+  if ('maxAge' in options) {
+    delete options.maxAge
+  }
+  return cookie.serialize(tokenOptions.cookieName, '', options)
+}
+
+/**
  * Create a hmac sha512 hash of the given value and salt
  * @param {string} value The value to hash
  * @param {string} salt A salt to use to create the hmac
@@ -797,16 +816,6 @@ export function setCookies (res, ...cookies) {
   cookieArray.push(...cookies)
   const setter = res.setHeader || res.set
   setter.call(res, 'Set-Cookie', cookieArray)
-}
-
-/**
- * Delete the user's cookies.
- *
- * @param {AuthResponse} res The response object to set the cookies on
- * @param {...string} cookieNames The names of the cookies to add to the set-cookie header
- */
-export function deleteCookies (res, ...cookieNames) {
-  setCookies(res, ...cookieNames.map(name => cookie.serialize(name, '', { expires: new Date(1) })))
 }
 
 /**
