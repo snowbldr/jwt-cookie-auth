@@ -1,7 +1,8 @@
 {
   "name": "jwt-cookie-auth",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "",
+  "homepage": "https://github.com/snowbldr/jwt-cookie-auth",
   "main": "index.js",
   "type": "module",
   "files": [
