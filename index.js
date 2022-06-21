@@ -539,7 +539,8 @@ export class JwtCookieAuthorizer {
       throw new Error('Refresh is disabled for this authorizer')
     }
     await this.#logoutUnauthorized(req, res, async () => {
-      let authUser = await this.#verifyRequest(req, res, this.#config.tokens.auth)
+      const tokenOptions = this.#config.tokens.auth
+      let authUser = await this.#verifyRequest(req, res, tokenOptions)
       const refreshUser = await this.#verifyRequest(req, res, this.#config.tokens.refresh)
       const refreshToken = this.getCookieValue(req, this.#config.tokens.refresh.cookieName)
       const refreshTokenValid = await this.#config.login.checkRefreshTokenValid(refreshUser, refreshToken)
@@ -550,9 +551,9 @@ export class JwtCookieAuthorizer {
         const persistedUser = await this.#config.login.loadUserByUsername(authUser.username, req, res)
         authUser = await this.#config.login.userToJwtPayload(persistedUser)
       }
-      const authToken = await createJwtToken(authUser, this.#config.tokens.auth)
+      const authToken = await createJwtToken(removeConflictingJwtFields(authUser, tokenOptions.signOptions), tokenOptions)
       req.user = authUser
-      setCookies(res, createTokenCookie(this.#config.tokens.auth, authToken))
+      setCookies(res, createTokenCookie(tokenOptions, authToken))
     })
   }
 
@@ -563,9 +564,9 @@ export class JwtCookieAuthorizer {
    * @throws {UnauthorizedError}
    */
   async basicAuthLogin (req, res) {
+    const loadUserByUsername = this.#config.login.loadUserByUsername
+    ensureFn(this.#config.login, 'loadUserByUsername', false)
     await this.#logoutUnauthorized(req, res, async () => {
-      const loadUserByUsername = this.#config.login.loadUserByUsername
-      ensureFn(this.#config.login, 'loadUserByUsername', false)
       const authHeader = req.headers.authorization
       if (authHeader) {
         const { username, password } = this.parseBasicAuthHeader(authHeader)
@@ -1008,3 +1009,33 @@ const ensureStringOrBuffer = (obj, prop, optional = false) => {
   return obj[prop]
 }
 const valOrDefault = (value, defaultValue) => typeof value === typeof defaultValue ? value : defaultValue
+
+/**
+ * Some jwt fields can be specified in both the payload and the options
+ * jsonwebtoken will throw an error if specified in both
+ * This function makes the specified options win vs the payload
+ *
+ * This is only relevant when refreshing an auth token
+ *
+ * The sub field is not checked, and should only be set on the user and should not be set in the options
+ *
+ * @param {JwtUser} payload The payload to compare
+ * @param {object} options The jsonwebtoken options to compare
+ * @return {JwtUser} The payload with any conflicting jwt fields removed, they will be re-created after signing as specified in the options.
+ */
+function removeConflictingJwtFields (payload, options) {
+  const result = { ...payload }
+  if (options.expiresIn && result.exp) {
+    delete result.exp
+  }
+  if (options.notBefore && result.nbf) {
+    delete result.nbf
+  }
+  if (options.audience && result.aud) {
+    delete result.aud
+  }
+  if (options.issuer && result.iss) {
+    delete result.iss
+  }
+  return result
+}
