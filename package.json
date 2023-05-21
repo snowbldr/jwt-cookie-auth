@@ -1,6 +1,6 @@
 {
   "name": "jwt-cookie-auth",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "",
   "homepage": "https://github.com/snowbldr/jwt-cookie-auth",
   "main": "index.js",
@@ -24,7 +24,7 @@
   "license": "MIT",
   "dependencies": {
     "cookie": "^0.5.0",
-    "jsonwebtoken": "^8.5.1"
+    "jsonwebtoken": "9.0.0"
   },
   "devDependencies": {
     "jest": "^27.5.1",
