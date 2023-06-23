@@ -1,3 +1,9 @@
+# DO NOT USE
+
+This library will no longer be supported, and is left here only for educational and entertainment purposes.
+
+In the end, it didn't even matter, except for all the cool shit I learned.
+
 # jwt-cookie-auth
 Authentication and authorization using JWTs stored in cookies for maintaining sessions
 
